@@ -1,0 +1,116 @@
+const typeFunctions = require('./typeFunctions');
+const genericDiff = require('./genericDiff');
+
+const ErrorDiffInvalid = "diff data invalid";
+const ErrorChangedStructInvalid = "new version of the file invalid";
+
+/**
+ * Summary. Class to find the original object from changed json and diff
+ */
+var StructPatch = (function() {
+    // init
+    function StructPatch(changedStruct, changes) {
+        this._changedStruct = changedStruct;
+        this._changes = changes;
+    }
+
+    // return structure - val : the original object, err : error if any
+    function patchStruct (val, err) {
+        return {
+            val: val || {},
+            err: err || ''
+        }
+    }
+
+    // recursive function to find whole of the original object
+    function getStructDiffPatch(changedStruct, changes) {
+        // copy changed object
+        const originalStruct = JSON.parse(JSON.stringify(changedStruct));
+        // iterate through all the keys of originalStruct and find which are of the type array of objects
+        // change these keys into the format "keys.0", "keys.1", etc
+        for (const key in originalStruct) {
+            if (originalStruct.hasOwnProperty(key)) {
+                if (typeFunctions.isArray(originalStruct[key]) &&
+                    originalStruct[key].length > 0 &&
+                    typeFunctions.isObject(originalStruct[key][0])) {
+                    for (let it = 0; it < originalStruct[key].length; it++) {
+                        const objKey = key + "." + it;
+                        originalStruct[objKey] = originalStruct[key][it]
+                    }
+                    delete originalStruct[key];
+                }
+            }
+        }
+        // iterate through all the keys of diff object
+        for (const key in changes) {
+            if (changes.hasOwnProperty(key)) {
+                // if key is of the type Object: recursively call getStructDiffPatch of getting child data
+                if (typeFunctions.isObject(changes[key])) {
+                    if (!(originalStruct.hasOwnProperty(key) && originalStruct[key])) {
+                        originalStruct[key] = {};
+                    }
+                    const childObjPatch = getStructDiffPatch(originalStruct[key], changes[key]);
+                    if (childObjPatch.err) {
+                        return patchStruct({}, childObjPatch.err);
+                    }
+                    originalStruct[key] = childObjPatch.val;
+                    continue;
+                }
+                // values of keys in diff obejct cannot be anything other than Object or Array
+                if (!typeFunctions.isArray(changes[key])) {
+                    return patchStruct({}, ErrorDiffInvalid);
+                }
+                // find the original key value
+                const childPatch = genericDiff.patchDiff(originalStruct[key], changes[key]);
+                if (childPatch.error) {
+                    return patchStruct({}, childPatch.error);
+                }
+                if (childPatch.originalVal === undefined) {
+                    delete originalStruct[key];
+                } else {
+                    originalStruct[key] = childPatch.originalVal;
+                }
+            }
+        }
+        // the keys of originalStruct which were of the type array of objects
+        // after finding original values of individual objects inside the array
+        // patch it back into a array of objects
+        const arrayKeysData = {};
+        const arrayFieldRegex = /\.[0-9]/;
+        for (const key in originalStruct) {
+            if (originalStruct.hasOwnProperty(key)) {
+                const index = key.search(arrayFieldRegex);
+                if (index !== -1) {
+                    const originalKey = key.substr(0, index);
+                    if (!arrayKeysData.hasOwnProperty(originalKey)) {
+                        arrayKeysData[originalKey] = {};
+                    }
+                    const originalKeyIndex = key.substr(index + 1);
+                    arrayKeysData[originalKey][originalKeyIndex] = originalStruct[key];
+                    delete originalStruct[key];
+                }
+            }
+        }
+        for (const key in arrayKeysData) {
+            let it = 0;
+            originalStruct[key] = [];
+            while (arrayKeysData[key].hasOwnProperty(it.toString())) {
+                originalStruct[key].push(arrayKeysData[key][it.toString()]);
+                it++;
+            }
+        }
+        return patchStruct(originalStruct, '');
+    }
+
+    // main function called from here
+    StructPatch.prototype.getStructPatch = function() {
+        if (!typeFunctions.isObject(this._changedStruct)) {
+            return patchStruct({}, ErrorChangedStructInvalid);
+        }
+        return getStructDiffPatch(this._changedStruct, this._changes);
+    };
+
+    return StructPatch;
+})();
+
+module.exports = StructPatch;

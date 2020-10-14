@@ -1,0 +1,106 @@
+const typeFunctions = require('./typeFunctions');
+const genericDiff = require('./genericDiff');
+
+/**
+ * Summary. Class to find the diff between 2 objects.
+ */
+var StructDiff = (function() {
+    // init
+    function StructDiff(originalStruct, changedStruct, filter) {
+        this._originalStruct = originalStruct;
+        this._changedStruct = changedStruct;
+        this._filter = filter || {};
+    }
+
+    // recursive function to find the diff
+    function getChangedFields(originalStruct, changedStruct, filter) {
+        const change = {};
+        let isFilterApplied = false;
+        // check if filter is to be applied
+        if (filter && typeFunctions.isObject(filter) && !typeFunctions.isEmpty(filter)) {
+            isFilterApplied = true;
+        }
+        // iterate through all the keys of the originalStruct
+        for (const key in originalStruct) {
+            if (originalStruct.hasOwnProperty(key) &&
+                (
+                    !isFilterApplied ||
+                    (isFilterApplied && filter.hasOwnProperty(key) && filter[key])
+                )
+            ) {
+                // if changed struct doesn't have keys present in original struct
+                if (!changedStruct.hasOwnProperty(key)) {
+                    change[key] = genericDiff.getDiff(originalStruct[key], undefined);
+                    continue;
+                }
+                // if the key is of type Object: call the getChangedFields recursively
+                if (typeFunctions.isObject(originalStruct[key])) {
+                    const internalChanges = getChangedFields(originalStruct[key], changedStruct[key], filter[key]);
+                    if (!typeFunctions.isEmpty(internalChanges)) {
+                        change[key] = internalChanges;
+                    }
+                    continue;
+                }
+                // if the key is of type Array of Objects:
+                // separate each object in the array into individual keys with naming - "key.0", "key.1", etc
+                if (typeFunctions.isArray(originalStruct[key]) &&
+                    originalStruct[key].length > 0 &&
+                    typeFunctions.isObject(originalStruct[key][0]) &&
+                    typeFunctions.isArray(changedStruct[key]) &&
+                    changedStruct[key].length > 0 &&
+                    typeFunctions.isObject(changedStruct[key][0])) {
+                    for (let it = 0; it < originalStruct[key].length; it++) {
+                        if (changedStruct[key].length > it) {
+                            const objKey = key + "." + it;
+                            if (!typeFunctions.compareValues(originalStruct[key][it], changedStruct[key][it])) {
+                                change[objKey] = getChangedFields(originalStruct[key][it], changedStruct[key][it], {});
+                            }
+                        }
+                    }
+                    if (changedStruct[key].length > originalStruct[key].length) {
+                        for (let it = originalStruct[key].length; it < changedStruct[key].length; it++) {
+                            const objKey = key + "." + it;
+                            change[objKey] = genericDiff.getDiff(undefined, changedStruct[key][it]);
+                        }
+                    } else if (changedStruct[key].length < originalStruct[key].length) {
+                        for (let it = changedStruct[key].length; it < originalStruct[key].length; it++) {
+                            const objKey = key + "." + it;
+                            change[objKey] = genericDiff.getDiff(changedStruct[key][it], undefined);
+                        }
+                    }
+                    continue;
+                }
+                // if the key for other types get diff
+                if (!typeFunctions.compareValues(originalStruct[key], changedStruct[key])) {
+                    change[key] = genericDiff.getDiff(originalStruct[key], changedStruct[key]);
+                }
+            }
+        }
+        // iterate through all the keys of the changedStruct not present in originalStruct
+        for (const key in changedStruct) {
+            if (changedStruct.hasOwnProperty(key) &&
+                (
+                    !isFilterApplied ||
+                    (isFilterApplied && filter.hasOwnProperty(key) && filter[key])
+                )
+            ) {
+                if (!originalStruct.hasOwnProperty(key)) {
+                    change[key] = genericDiff.getDiff(undefined, changedStruct[key]);
+                }
+            }
+        }
+        return change;
+    }
+
+    // main function called from here
+    StructDiff.prototype.getStructDiff = function() {
+        if (!typeFunctions.isObject(this._originalStruct) || !typeFunctions.isObject(this._changedStruct)) {
+            return {};
+        }
+        return getChangedFields(this._originalStruct, this._changedStruct, this._filter);
+    };
+
+    return StructDiff;
+})();
+
+module.exports = StructDiff;

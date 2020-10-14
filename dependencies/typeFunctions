@@ -1,0 +1,45 @@
+const _ = require('lodash');
+
+const TypeOfObject = "object";
+const TypeOfString = "string";
+
+// function to check if obj is of type Object
+exports.isObject = function(obj) {
+    return _.isObject(obj) && !_.isArray(obj);
+};
+
+// function to check if arr is of type Array
+exports.isArray = function(arr) {
+    return _.isArray(arr)
+};
+
+// function to check if str is of type String
+exports.isString = function (str) {
+    return _.isString(str);
+};
+
+// function to check if var1 and var2 are of the same type
+exports.compareTypes = function(var1, var2) {
+    if (typeof(var1) !== TypeOfObject) {
+        if (typeof(var1) === typeof(var2)) {
+            return true;
+        }
+    } else {
+        const isVar1Array = this.isArray(var1);
+        const isVar2Array = this.isArray(var2);
+        if ((isVar1Array && isVar1Array) || (!isVar1Array && !isVar2Array)) {
+            return true;
+        }
+    }
+    return false;
+};
+
+// function to check if obj is empty
+exports.isEmpty = function(obj) {
+    return _.isEmpty(obj);
+};
+
+// function to check if var1 has same data values as compared to var2
+exports.compareValues = function (var1, var2) {
+    return _.isEqual(var1, var2);
+};

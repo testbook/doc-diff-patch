@@ -1,0 +1,205 @@
+const myersDiff = require('./myersDiff');
+const typeFunctions = require('./typeFunctions');
+
+const ActionValueCompleteInsertion  = "fullIns";
+const ActionValueCompleteDeletion  = "fullDel";
+const ActionValueInsertion = "ins";
+const ActionValueDeletion  = "del";
+
+const ErrorDiffInvalid = "diff data invalid";
+
+// change structure of a string or array
+function changeStruct(action, pos, val) {
+    return {
+        action: action || '',
+        pos: pos || 0,
+        val: val || ''
+    };
+}
+
+// return structure of mayersPatch function
+function patchStruct(val, error) {
+    return {
+        originalVal: val,
+        error: error
+    };
+}
+
+// get full change between two arrays using myers diff algo in linear space
+function mayersDiff(originalVar, changedVar) {
+    var myersDiffInstance = new myersDiff(originalVar, changedVar);
+    // find the diff path
+    const fullDiffPath = myersDiffInstance.diffPath();
+    const allChanges = [];
+    // change the path into changeStruct object
+    for (let i = 0; i < fullDiffPath.length; i++) {
+        const path = fullDiffPath[i];
+        if (path.from.x === path.to.x) {
+            allChanges.push(
+                changeStruct(ActionValueInsertion, path.from.y, changedVar[path.from.y])
+            );
+        } else if (path.from.y === path.to.y) {
+            allChanges.push(
+                changeStruct(ActionValueDeletion, path.from.x, originalVar[path.from.x])
+            );
+        }
+    }
+    return allChanges;
+}
+
+// get the original value from recent version and the diff between the two calculated from mayersDiff function
+function mayersPatch(changedVal, changes, isString) {
+    // error if changes is empty
+    if (!(changes && changes.length)) {
+        return patchStruct(changedVal, '');
+    }
+    // convert string into array of strings split by space
+    if (isString) {
+        changedVal = changedVal.split(" ");
+    }
+    let numberOfInsertions = 0;
+    let numberOfDeletions = 0;
+    const insertionsPositionMap = {};
+    for (let i = 0; i < changes.length; i++) {
+        const change = changes[i];
+        if (change.action === ActionValueInsertion) {
+            numberOfInsertions++;
+            insertionsPositionMap[change.pos] = true;
+            // todo : add compatibility for dates in typeFunctions.compareValues
+            // if (change.pos >= changedVal.length || !typeFunctions.compareValues(changedVal[change.pos], change.val)) {
+            // error if any change pos for insertion is greater than the size of changedVal
+            if (change.pos >= changedVal.length) {
+                return patchStruct([], ErrorDiffInvalid);
+            }
+        } else {
+            numberOfDeletions++;
+        }
+    }
+    // finding original values length
+    const originalValLen = changedVal.length - numberOfInsertions + numberOfDeletions;
+    let originalVal = new Array(originalValLen);
+    for (let i = 0; i < changes.length; i++) {
+        const change = changes[i];
+        if (change.action === ActionValueDeletion) {
+            // error if any change pos for deletion is greater than the size of originalVal
+            if (change.pos >= originalValLen) {
+                return patchStruct([], ErrorDiffInvalid);
+            }
+            // if deletion took place originally than the originalVal will have the same values stored in diff at this position
+            originalVal[change.pos] = change.val;
+        }
+    }
+    let originalValIndex = 0;
+    for (let changedValIndex = 0; changedValIndex < changedVal.length; changedValIndex++) {
+        // ignore if already values assigned for the position
+        if (insertionsPositionMap[changedValIndex]) {
+            continue;
+        }
+        while (originalVal[originalValIndex] !== undefined) {
+            originalValIndex++;
+        }
+        originalVal[originalValIndex] = changedVal[changedValIndex];
+        originalValIndex++;
+    }
+    if (isString) {
+        originalVal = originalVal.join(" ");
+    }
+    return patchStruct(originalVal, '');
+}
+
+// consolidate diffs with consecutive insertions or deletions to reduce size of changes array
+function consolidateDiff(changes, isString) {
+    const consolidatedChanges = [];
+    for (let i = 0; i < changes.length; i++) {
+        const currentAction = changes[i].action;
+        const initialPosition = changes[i].pos;
+        let posIterator = changes[i].pos;
+        const valChangesArr = [changes[i].val];
+        while (i < changes.length - 1 && currentAction === changes[i + 1].action && posIterator + 1 === changes[i + 1].pos) {
+            valChangesArr.push(changes[i + 1].val);
+            i++;
+            posIterator++;
+        }
+        let finalValue = !isString ? valChangesArr : valChangesArr.join(" ");
+        consolidatedChanges.push(
+            changeStruct(currentAction, initialPosition, finalValue)
+        );
+    }
+    return consolidatedChanges;
+}
+
+// expand diffs consolidated by the function consolidateDiff
+function expandDiff(consolidatedChanges, isString) {
+    const changes = [];
+    for (let i = 0; i < consolidatedChanges.length; i++) {
+        const currentAction = consolidatedChanges[i].action;
+        const consolidatedVals = !isString ? consolidatedChanges[i].val : consolidatedChanges[i].val.split(" ");
+        let startingPos = consolidatedChanges[i].pos;
+        for (let j = 0; j < consolidatedVals.length; j++) {
+            changes.push(changeStruct(currentAction, startingPos, consolidatedVals[j]));
+            startingPos++;
+        }
+    }
+    return changes;
+}
+
+// main function to call to find the diff between 2 values
+exports.getDiff = function (originalVar, changedVar) {
+    // if originalVal is null then complete insertion is taking place
+    if (originalVar === undefined) {
+        return [
+            changeStruct(ActionValueCompleteInsertion, 0, "")
+        ];
+    }
+    // if changedVal is null or the types of changedVal and originalVal doesn't match then complete change of value can be assumed
+    if (changedVar === undefined || !typeFunctions.compareTypes(originalVar, changedVar)) {
+        return [
+            changeStruct(ActionValueCompleteDeletion, 0, originalVar)
+        ];
+    }
+    // types of val currently supported is string or array for mayers diff else complete change of value is assumed
+    if (typeFunctions.isArray(originalVar)) {
+        return consolidateDiff(mayersDiff(originalVar, changedVar), false);
+    }
+    if (typeFunctions.isString(originalVar)) {
+        return consolidateDiff(mayersDiff(originalVar.split(" "), changedVar.split(" ")), true);
+    }
+    return [
+        changeStruct(ActionValueCompleteDeletion, 0, originalVar)
+    ];
+};
+
+// main function to call to find the originalVal from changedVal and diff
+exports.patchDiff = function (changedVal, changes) {
+    // error if changes is empty
+    if (!(changes && changes.length)) {
+        return patchStruct([], ErrorDiffInvalid);
+    }
+    // error if any object in changes array doesn't have the keys action, pos or val
+    for (let i = 0; i < changes.length; i++) {
+        if (!(changes[i].hasOwnProperty('action') && changes[i].hasOwnProperty('pos') && changes[i].hasOwnProperty('val'))) {
+            return patchStruct([], ErrorDiffInvalid);
+        }
+    }
+    // if complete deletion had taken place
+    if (changes[0].action === ActionValueCompleteDeletion) {
+        return patchStruct(changes[0].val, '');
+    }
+    // if complete insertion had taken place
+    if (changes[0].action === ActionValueCompleteInsertion) {
+        return patchStruct(undefined, '');
+    }
+    if (typeFunctions.isArray(changes[0].val)) {
+        if (!changedVal) {
+            changedVal = [];
+        }
+        return mayersPatch(changedVal, expandDiff(changes, false), false);
+    }
+    if (typeFunctions.isString(changes[0].val)) {
+        if (!changedVal) {
+            changedVal = '';
+        }
+        return mayersPatch(changedVal, expandDiff(changes, true), true);
+    }
+    return patchStruct([], ErrorDiffInvalid);
+};

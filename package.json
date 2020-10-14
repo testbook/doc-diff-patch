@@ -1,0 +1,23 @@
+{
+  "name": "doc-diff-patch",
+  "version": "1.0.0",
+  "description": "Version Version management for structures",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/testbook/doc-diff-patch.git"
+  },
+  "author": "Parv Tiwari",
+  "license": "Unlicense",
+  "bugs": {
+    "url": "https://github.com/testbook/doc-diff-patch/issues"
+  },
+  "homepage": "https://github.com/testbook/doc-diff-patch#readme",
+  "dependencies": {
+    "lodash": "^4.17.20",
+    "npm": "^6.14.8"
+  }
+}
