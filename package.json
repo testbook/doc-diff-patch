@@ -1,8 +1,18 @@
 {
   "name": "doc-diff-patch",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Version Version management for structures",
   "main": "index.js",
+  "keywords": [
+    "diff",
+    "jsdiff",
+    "jsondiff",
+    "compare",
+    "patch",
+    "text",
+    "json",
+    "javascript"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -15,12 +25,10 @@
   "bugs": {
     "url": "https://github.com/testbook/doc-diff-patch/issues"
   },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com/"
-  },
   "homepage": "https://github.com/testbook/doc-diff-patch#readme",
   "dependencies": {
     "lodash": "^4.17.20",
     "npm": "^6.14.8"
-  }
+  },
+  "devDependencies": {}
 }
