@@ -20,6 +20,9 @@ var StructDiff = (function() {
         if (filter && typeFunctions.isObject(filter) && !typeFunctions.isEmpty(filter)) {
             isFilterApplied = true;
         }
+        if (!(filter && typeFunctions.isObject(filter))) {
+            filter = {};
+        }
         // iterate through all the keys of the originalStruct
         for (const key in originalStruct) {
             if (originalStruct.hasOwnProperty(key) &&
