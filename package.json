@@ -27,8 +27,7 @@
   },
   "homepage": "https://github.com/testbook/doc-diff-patch#readme",
   "dependencies": {
-    "lodash": "^4.17.20",
-    "npm": "^6.14.8"
+    "lodash": "^4.17.20"
   },
   "devDependencies": {}
 }
