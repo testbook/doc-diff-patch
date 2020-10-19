@@ -1,3 +1,6 @@
+![npm](https://img.shields.io/npm/v/beholdjs?style=flat-square) 
+
+
 # Doc Diff Patch 
 
 Finding the complete diff between two JSONs and recreation of the original JSON from the current version of the JSON and previously calculated diff for version management. 
