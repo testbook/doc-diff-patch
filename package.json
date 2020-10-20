@@ -1,6 +1,6 @@
 {
   "name": "doc-diff-patch",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Version Version management for structures",
   "main": "index.js",
   "keywords": [

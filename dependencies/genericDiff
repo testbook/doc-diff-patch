@@ -203,3 +203,12 @@ exports.patchDiff = function (changedVal, changes) {
     }
     return patchStruct([], ErrorDiffInvalid);
 };
+
+exports.actionTypes = function () {
+    return {
+        fullInsertion: ActionValueCompleteInsertion,
+        fullDeletion: ActionValueCompleteDeletion,
+        partialInsertion: ActionValueInsertion,
+        partialDeletion: ActionValueDeletion,
+    }
+};

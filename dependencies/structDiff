@@ -47,11 +47,12 @@ var StructDiff = (function() {
                 // if the key is of type Array of Objects:
                 // separate each object in the array into individual keys with naming - "key.0", "key.1", etc
                 if (typeFunctions.isArray(originalStruct[key]) &&
-                    originalStruct[key].length > 0 &&
-                    typeFunctions.isObject(originalStruct[key][0]) &&
                     typeFunctions.isArray(changedStruct[key]) &&
-                    changedStruct[key].length > 0 &&
-                    typeFunctions.isObject(changedStruct[key][0])) {
+                    (
+                        (originalStruct[key].length > 0 && typeFunctions.isObject(originalStruct[key][0])) ||
+                        (changedStruct[key].length > 0 && typeFunctions.isObject(changedStruct[key][0]))
+                    )
+                    ) {
                     for (let it = 0; it < originalStruct[key].length; it++) {
                         if (changedStruct[key].length > it) {
                             const objKey = key + "." + it;
@@ -68,7 +69,7 @@ var StructDiff = (function() {
                     } else if (changedStruct[key].length < originalStruct[key].length) {
                         for (let it = changedStruct[key].length; it < originalStruct[key].length; it++) {
                             const objKey = key + "." + it;
-                            change[objKey] = genericDiff.getDiff(changedStruct[key][it], undefined);
+                            change[objKey] = genericDiff.getDiff(originalStruct[key][it], undefined);
                         }
                     }
                     continue;

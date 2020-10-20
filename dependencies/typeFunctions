@@ -27,7 +27,7 @@ exports.compareTypes = function(var1, var2) {
     } else {
         const isVar1Array = this.isArray(var1);
         const isVar2Array = this.isArray(var2);
-        if ((isVar1Array && isVar1Array) || (!isVar1Array && !isVar2Array)) {
+        if ((isVar1Array && isVar2Array) || (!isVar1Array && !isVar2Array)) {
             return true;
         }
     }

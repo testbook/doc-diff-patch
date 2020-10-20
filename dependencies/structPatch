@@ -33,11 +33,21 @@ var StructPatch = (function() {
                 if (typeFunctions.isArray(originalStruct[key]) &&
                     originalStruct[key].length > 0 &&
                     typeFunctions.isObject(originalStruct[key][0])) {
-                    for (let it = 0; it < originalStruct[key].length; it++) {
-                        const objKey = key + "." + it;
-                        originalStruct[objKey] = originalStruct[key][it]
+                    // do not convert if fullIns
+                    if (
+                        !(
+                            changes.hasOwnProperty(key) &&
+                            typeFunctions.isArray(changes[key]) &&
+                            changes[key].length === 1 &&
+                            changes[key][0].action === genericDiff.actionTypes().fullInsertion
+                        )
+                    ) {
+                        for (let it = 0; it < originalStruct[key].length; it++) {
+                            const objKey = key + "." + it;
+                            originalStruct[objKey] = originalStruct[key][it]
+                        }
+                        delete originalStruct[key];
                     }
-                    delete originalStruct[key];
                 }
             }
         }
@@ -65,6 +75,7 @@ var StructPatch = (function() {
                 if (childPatch.error) {
                     return patchStruct({}, childPatch.error);
                 }
+
                 if (childPatch.originalVal === undefined) {
                     delete originalStruct[key];
                 } else {
